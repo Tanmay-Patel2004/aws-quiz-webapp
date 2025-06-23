@@ -1,6 +1,5 @@
 import { useTimer } from "../hooks/useTimer";
 import { useState, useEffect } from "react";
-
 import {
   Box,
   Typography,
@@ -14,48 +13,107 @@ import {
   Container,
   Grid,
   Chip,
+  CircularProgress,
 } from "@mui/material";
 
-import examData from "../data/exam-1.json"; // adjust as needed
-
-function Quiz({ isDarkMode, showTimer, timerDuration }) {
+function Quiz({ examFile }) {
+  const [examData, setExamData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState("");
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [markQuestion, setMarkQuestion] = useState(false);
-  const [questionStatus, setQuestionStatus] = useState(
-    examData.map(() => ({ answered: false, marked: false }))
-  );
+  const [questionStatus, setQuestionStatus] = useState([]);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showReviewScreen, setShowReviewScreen] = useState(false);
-
   const [showReview, setShowReview] = useState(false);
+  const { time } = useTimer(90); // 90 seconds for demo; adjust as needed
+
+  useEffect(() => {
+    const fetchExamData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch(
+          `https://raw.githubusercontent.com/Tanmay-Patel2004/aws-practice-questions/main/data/${examFile}`
+        );
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch ${examFile}. Status: ${response.status}`
+          );
+        }
+        const data = await response.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          throw new Error("Exam data is empty or invalid.");
+        }
+        setExamData(data);
+        setQuestionStatus(data.map(() => ({ answered: false, marked: false })));
+        setLoading(false);
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    fetchExamData();
+  }, [examFile]);
+
+  useEffect(() => {
+    if (examData && current < examData.length) {
+      setMarkQuestion(questionStatus[current]?.marked || false);
+    }
+  }, [current, examData, questionStatus]);
+
+  if (loading) {
+    return (
+      <Container maxWidth="sm">
+        <Box mt={10} textAlign="center">
+          <CircularProgress />
+          <Typography variant="h6" mt={2}>
+            Loading exam...
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container maxWidth="sm">
+        <Box mt={10} textAlign="center">
+          <Typography variant="h6" color="error">
+            Error: {error}
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => window.location.reload()}
+            sx={{ mt: 2 }}
+          >
+            Retry
+          </Button>
+        </Box>
+      </Container>
+    );
+  }
+
+  if (!examData || examData.length === 0) {
+    return (
+      <Container maxWidth="sm">
+        <Box mt={10} textAlign="center">
+          <Typography variant="h6" color="error">
+            No questions found in the exam.
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
+
   const question = examData[current];
-  const { time, expired } = useTimer(90); // 60 minutes default
-  const [timeLeft, setTimeLeft] = useState(timerDuration * 60);
-
-  useEffect(() => {
-    if (!showTimer) return;
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [showTimer]);
-
-  useEffect(() => {
-    setMarkQuestion(questionStatus[current]?.marked || false);
-  }, [current]);
-
-  // Format timer for display
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s < 10 ? "0" + s : s}`;
-  };
 
   const handleSubmit = () => {
-    // ✅ Update question status before navigating
     const updatedStatus = [...questionStatus];
     updatedStatus[current] = {
       answered: selected !== "",
@@ -70,16 +128,10 @@ function Quiz({ isDarkMode, showTimer, timerDuration }) {
       setSelected("");
     } else {
       setShowResult(true);
-      setReviewMode(true);
+      setShowReview(true);
     }
   };
 
-  const handlePrevious = () => {
-    setCurrent(current - 1);
-    setSelected("");
-  };
-
-  // Show result screen if test is complete
   if (showResult) {
     return (
       <Container maxWidth="sm">
@@ -98,7 +150,6 @@ function Quiz({ isDarkMode, showTimer, timerDuration }) {
     );
   }
 
-  // Show review screen if requested
   if (showReviewScreen) {
     const answered = questionStatus.filter((q) => q.answered).length;
     const marked = questionStatus.filter((q) => q.marked).length;
@@ -130,7 +181,7 @@ function Quiz({ isDarkMode, showTimer, timerDuration }) {
                 onClick={() => {
                   setShowReviewScreen(false);
                   setShowResult(true);
-                  setReviewMode(true);
+                  setShowReview(true);
                 }}
               >
                 Submit Exam
@@ -145,7 +196,6 @@ function Quiz({ isDarkMode, showTimer, timerDuration }) {
   return (
     <Container maxWidth="lg">
       <Box mt={5}>
-        {/* Timer at top right */}
         <Box
           display="flex"
           justifyContent="flex-end"
@@ -168,10 +218,8 @@ function Quiz({ isDarkMode, showTimer, timerDuration }) {
           </Typography>
         </Box>
         <Grid container spacing={4}>
-          {/* Main Question Area */}
           <Grid item xs={12} md={9}>
             <Paper elevation={3} sx={{ padding: 4 }}>
-              {/* Top Controls */}
               <Box
                 display="flex"
                 justifyContent="space-between"
@@ -197,12 +245,10 @@ function Quiz({ isDarkMode, showTimer, timerDuration }) {
                 </Typography>
               </Box>
 
-              {/* Question Text */}
               <Typography variant="h6" gutterBottom>
                 {question.question}
               </Typography>
 
-              {/* Options */}
               <FormControl component="fieldset">
                 <RadioGroup
                   value={selected}
@@ -222,14 +268,12 @@ function Quiz({ isDarkMode, showTimer, timerDuration }) {
                 </RadioGroup>
               </FormControl>
 
-              {/* Show Answer */}
               {showAnswer && (
                 <Typography variant="subtitle2" color="green" mt={2}>
                   Correct Answer: {question.answer}
                 </Typography>
               )}
 
-              {/* Explanation */}
               {showReview && (
                 <Box mt={3}>
                   <Typography variant="subtitle2" color="green">
@@ -243,7 +287,6 @@ function Quiz({ isDarkMode, showTimer, timerDuration }) {
                 </Box>
               )}
 
-              {/* Navigation Buttons */}
               <Box mt={4} display="flex" justifyContent="space-between">
                 <Button
                   variant="outlined"
@@ -292,7 +335,6 @@ function Quiz({ isDarkMode, showTimer, timerDuration }) {
             </Paper>
           </Grid>
 
-          {/* Sidebar - Question Palette */}
           <Grid item xs={12} md={3}>
             <Paper elevation={1} sx={{ padding: 2 }}>
               <Typography variant="subtitle1" gutterBottom>

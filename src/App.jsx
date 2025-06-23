@@ -1,6 +1,6 @@
-// App.jsx
 import React, { useState } from "react";
 import Quiz from "./components/Quiz";
+import Home from "./components/Home";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Box,
@@ -18,6 +18,7 @@ import {
 function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null); // State for menu anchor
+  const [selectedExamFile, setSelectedExamFile] = useState(null); // State for selected exam
 
   const lightTheme = createTheme({
     palette: { mode: "light" },
@@ -37,6 +38,11 @@ function App() {
     setAnchorEl(null);
   };
 
+  // Handle starting the exam
+  const handleStartExam = (filename) => {
+    setSelectedExamFile(filename);
+  };
+
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline />
@@ -52,7 +58,11 @@ function App() {
         </IconButton>
       </Box>
 
-      <Quiz darkMode={darkMode} />
+      {selectedExamFile ? (
+        <Quiz darkMode={darkMode} examFile={selectedExamFile} />
+      ) : (
+        <Home onStartExam={handleStartExam} />
+      )}
 
       <Menu
         anchorEl={anchorEl}
