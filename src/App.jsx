@@ -6,39 +6,43 @@ import {
   Box,
   IconButton,
   Switch,
-  FormControlLabel,
   Menu,
   MenuItem,
   Typography,
   ThemeProvider,
   createTheme,
   CssBaseline,
+  AppBar,
+  Toolbar,
+  Container,
+  Divider,
+  Fade,
+  alpha,
 } from "@mui/material";
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null); // State for menu anchor
-  const [selectedExamFile, setSelectedExamFile] = useState(null); // State for selected exam
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedExamFile, setSelectedExamFile] = useState(null);
 
   const lightTheme = createTheme({
     palette: { mode: "light" },
+    transitions: { duration: { standard: 300 } },
   });
 
   const darkTheme = createTheme({
     palette: { mode: "dark" },
+    transitions: { duration: { standard: 300 } },
   });
 
-  // Handle opening the menu
   const handleSettingsClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
 
-  // Handle closing the menu
   const handleClose = () => {
     setAnchorEl(null);
   };
 
-  // Handle starting the exam
   const handleStartExam = (filename) => {
     setSelectedExamFile(filename);
   };
@@ -46,55 +50,168 @@ function App() {
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline />
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        p={2}
+
+      {/* AppBar */}
+      <AppBar
+        position="sticky"
+        sx={{
+          backgroundColor: (theme) => theme.palette.primary.main,
+          boxShadow: (theme) => theme.shadows[2],
+        }}
       >
-        <Typography variant="h5">AWS Exam Practice App</Typography>
-        <IconButton onClick={handleSettingsClick}>
-          <SettingsIcon sx={{ color: darkMode ? "white" : "black" }} />
-        </IconButton>
-      </Box>
+        <Toolbar
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Typography
+            variant="h6"
+            component="h1"
+            sx={{
+              color: (theme) => theme.palette.primary.contrastText,
+              fontWeight: 600,
+              fontSize: { xs: "1.1rem", sm: "1.25rem" },
+            }}
+          >
+            AWS Exam Practice App
+          </Typography>
 
-      {selectedExamFile ? (
-        <Quiz darkMode={darkMode} examFile={selectedExamFile} />
-      ) : (
-        <Home onStartExam={handleStartExam} />
-      )}
+          <IconButton
+            onClick={handleSettingsClick}
+            aria-label="Open settings menu"
+            sx={{
+              color: (theme) => theme.palette.primary.contrastText,
+              transition: (theme) =>
+                theme.transitions.create(["background-color", "transform"], {
+                  duration: theme.transitions.duration.standard,
+                }),
+              "&:hover": {
+                backgroundColor: (theme) =>
+                  alpha(theme.palette.common.white, 0.1),
+              },
+              "&:focus-visible": {
+                outline: (theme) =>
+                  `2px solid ${theme.palette.primary.contrastText}`,
+                outlineOffset: "2px",
+              },
+              transform: Boolean(anchorEl) ? "rotate(180deg)" : "rotate(0deg)",
+            }}
+          >
+            <SettingsIcon />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
 
+      {/* Content Container */}
+      <Container
+        maxWidth="0g"
+        sx={{
+          py: 0,
+          px: 0,
+          minHeight: "calc(100vh - 64px)", // Account for AppBar height
+        }}
+        disableGutters
+      >
+        <Fade
+          in={true}
+          timeout={{ enter: 500, exit: 300 }}
+          key={selectedExamFile ? "quiz" : "home"} // retriggers on switch
+        >
+          <Box>
+            {selectedExamFile ? (
+              <Quiz darkMode={darkMode} examFile={selectedExamFile} />
+            ) : (
+              <Home onStartExam={handleStartExam} />
+            )}
+          </Box>
+        </Fade>
+      </Container>
+
+      {/* Preferences Menu */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "right",
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{
+          "& .MuiPaper-root": {
+            minWidth: 240,
+            borderRadius: 2,
+            boxShadow: (theme) => theme.shadows[8],
+            border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          },
         }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "right",
+        MenuListProps={{
+          "aria-labelledby": "settings-button",
+          sx: { py: 1 },
         }}
       >
-        <MenuItem>
-          <Typography variant="h6" gutterBottom>
+        <MenuItem disabled sx={{ cursor: "default" }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              color: (theme) => theme.palette.text.primary,
+            }}
+          >
             Preferences
           </Typography>
         </MenuItem>
-        <MenuItem>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={darkMode}
-                onChange={() => {
-                  setDarkMode(!darkMode);
-                  handleClose(); // Close menu after toggling
-                }}
-              />
-            }
-            label="Dark Mode"
-          />
+
+        <Divider sx={{ my: 1 }} />
+
+        <MenuItem
+          onClick={() => {
+            setDarkMode(!darkMode);
+            handleClose();
+          }}
+          sx={{
+            py: 1.5,
+            "&:focus-visible": {
+              outline: (theme) => `2px solid ${theme.palette.primary.main}`,
+              outlineOffset: "-2px",
+            },
+          }}
+          aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+            }}
+          >
+            <Typography variant="body2" sx={{ mr: 2 }}>
+              Dark Mode
+            </Typography>
+            <Switch
+              checked={darkMode}
+              size="small"
+              sx={{
+                transition: (theme) =>
+                  theme.transitions.create("all", {
+                    duration: theme.transitions.duration.standard,
+                  }),
+                "& .MuiSwitch-thumb": {
+                  transition: (theme) =>
+                    theme.transitions.create("all", {
+                      duration: theme.transitions.duration.standard,
+                    }),
+                },
+                "& .MuiSwitch-track": {
+                  transition: (theme) =>
+                    theme.transitions.create("all", {
+                      duration: theme.transitions.duration.standard,
+                    }),
+                },
+              }}
+              inputProps={{ "aria-label": "Toggle dark mode" }}
+            />
+          </Box>
         </MenuItem>
       </Menu>
     </ThemeProvider>
