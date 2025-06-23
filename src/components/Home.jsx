@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useRef } from "react";
+
 import {
   Box,
   Button,
@@ -106,6 +107,7 @@ const exams = Array.from({ length: 23 }, (_, i) => ({
 }));
 
 export default function Home({ onStartExam }) {
+  const practiceRef = useRef(null);
   return (
     <ThemeProvider theme={theme}>
       <Box
@@ -181,7 +183,12 @@ export default function Home({ onStartExam }) {
                     transform: "translateY(-2px)",
                   },
                 }}
-                onClick={() => onStartExam("exam-1.json")}
+                onClick={() => {
+                  practiceRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }}
               >
                 Get Started
               </Button>
@@ -266,7 +273,7 @@ export default function Home({ onStartExam }) {
         </Container>
 
         {/* PRACTICE EXAMS SECTION */}
-        <Container maxWidth="lg" sx={{ py: 6 }} id="practice">
+        <Container maxWidth="lg" sx={{ py: 6 }} id="practice" ref={practiceRef}>
           <Box textAlign="center" sx={{ mb: 6 }}>
             <Typography
               variant="h3"

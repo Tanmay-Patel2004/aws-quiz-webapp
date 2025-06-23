@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Quiz from "./components/Quiz";
 import Home from "./components/Home";
 import SettingsIcon from "@mui/icons-material/Settings";
+
 import {
   Box,
   IconButton,
@@ -69,10 +70,12 @@ function App() {
           <Typography
             variant="h6"
             component="h1"
+            onClick={() => setSelectedExamFile(null)}
             sx={{
               color: (theme) => theme.palette.primary.contrastText,
               fontWeight: 600,
               fontSize: { xs: "1.1rem", sm: "1.25rem" },
+              cursor: "pointer",
             }}
           >
             AWS Exam Practice App
@@ -121,7 +124,11 @@ function App() {
         >
           <Box>
             {selectedExamFile ? (
-              <Quiz darkMode={darkMode} examFile={selectedExamFile} />
+              <Quiz
+                darkMode={darkMode}
+                examFile={selectedExamFile}
+                onQuit={() => setSelectedExamFile(null)}
+              />
             ) : (
               <Home onStartExam={handleStartExam} />
             )}

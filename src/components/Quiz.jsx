@@ -1,5 +1,7 @@
 import { useTimer } from "../hooks/useTimer";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import {
   Box,
   Typography,
@@ -37,7 +39,7 @@ import {
   Close as CloseIcon,
 } from "@mui/icons-material";
 
-function Quiz({ examFile }) {
+function Quiz({ examFile, onQuit }) {
   // Business logic intact: do not change - all existing state and hooks
   const [examData, setExamData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,6 @@ function Quiz({ examFile }) {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
 
-  // Business logic intact: do not change - all existing useEffect hooks
   useEffect(() => {
     const fetchExamData = async () => {
       try {
@@ -788,6 +789,16 @@ function Quiz({ examFile }) {
           >
             {/* HEADER - PROGRESS & TIMER */}
             <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider" }}>
+              {/* 1. Quit Button */}
+
+              <Button
+                startIcon={<ArrowBackIcon />}
+                variant="outlined"
+                onClick={onQuit}
+                sx={{ textTransform: "none", borderRadius: 2 }}
+              >
+                Quit
+              </Button>
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 justifyContent="space-between"
