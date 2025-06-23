@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://Tanmay-Patel2004.github.io/aws-practice-questions",
+  "homepage": "https://Tanmay-Patel2004.github.io/aws-quiz-webapp",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
