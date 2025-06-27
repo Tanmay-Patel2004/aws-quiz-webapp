@@ -1,6 +1,6 @@
 import { useTimer } from "../hooks/useTimer";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import {
   Box,
@@ -13,7 +13,6 @@ import {
   Button,
   Checkbox,
   Container,
-  Grid,
   Chip,
   CircularProgress,
   LinearProgress,
@@ -40,25 +39,65 @@ import {
 } from "@mui/icons-material";
 
 function Quiz({ examFile, onQuit }) {
-  // Business logic intact: do not change - all existing state and hooks
   const [examData, setExamData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [current, setCurrent] = useState(0);
-  const [selected, setSelected] = useState("");
-  const [score, setScore] = useState(0);
+
   const [showResult, setShowResult] = useState(false);
-  const [markQuestion, setMarkQuestion] = useState(false);
-  const [questionStatus, setQuestionStatus] = useState([]);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showReviewScreen, setShowReviewScreen] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false); // New state for mobile drawer
-  const { time } = useTimer(90); // Business logic intact: do not change
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
+
+  const [quizState, setQuizState] = useState(() => {
+    const saved = localStorage.getItem(`quizState_${examFile}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          current: parsed.current || 0,
+          selected: parsed.selected || "",
+          markQuestion: parsed.markQuestion || false,
+          questionStatus: Array.isArray(parsed.questionStatus)
+            ? parsed.questionStatus
+            : [],
+          score: parsed.score || 0,
+          time: parsed.time || "90:00", // Ensure time is "MM:SS" string
+        };
+      } catch (e) {
+        localStorage.removeItem(`quizState_${examFile}`);
+        return {
+          current: 0,
+          selected: "",
+          markQuestion: false,
+          questionStatus: [],
+          score: 0,
+          time: "90:00", // Default to "90:00" string
+        };
+      }
+    }
+    return {
+      current: 0,
+      selected: "",
+      markQuestion: false,
+      questionStatus: [],
+      score: 0,
+      time: "90:00", // Default to "90:00" string
+    };
+  });
+
+  const initialSeconds = quizState.time
+    ? typeof quizState.time === "string" && quizState.time.includes(":")
+      ? parseInt(quizState.time.split(":")[0]) * 60 +
+        parseInt(quizState.time.split(":")[1])
+      : 90 * 60
+    : 90 * 60;
+  const { time } = useTimer(initialSeconds);
+  const { current, selected, markQuestion, questionStatus, score } = quizState;
 
   useEffect(() => {
     const fetchExamData = async () => {
@@ -78,22 +117,52 @@ function Quiz({ examFile, onQuit }) {
           throw new Error("Exam data is empty or invalid.");
         }
         setExamData(data);
-        setQuestionStatus(data.map(() => ({ answered: false, marked: false })));
+        setQuizState((prev) => {
+          const currentStatus = prev.questionStatus || [];
+          const newQuestionStatus = Array(data.length)
+            .fill()
+            .map((_, index) => {
+              const existingStatus = currentStatus[index] || {};
+              return {
+                answered: existingStatus.answered || false,
+                marked: existingStatus.marked || false,
+              };
+            });
+          return {
+            ...prev,
+            questionStatus: newQuestionStatus,
+          };
+        });
         setLoading(false);
       } catch (err) {
         setError(err.message);
         setLoading(false);
       }
     };
-
     fetchExamData();
   }, [examFile]);
 
   useEffect(() => {
-    if (examData && current < examData.length) {
-      setMarkQuestion(questionStatus[current]?.marked || false);
+    if (
+      examData &&
+      quizState.current !== undefined &&
+      quizState.current < examData.length
+    ) {
+      setQuizState((prev) => ({
+        ...prev,
+        markQuestion: prev.questionStatus[prev.current]?.marked || false,
+      }));
     }
-  }, [current, examData, questionStatus]);
+  }, [examData, quizState.current, quizState.questionStatus]);
+
+  useEffect(() => {
+    setQuizState((prev) => ({ ...prev, time }));
+  }, [time]);
+
+  // Sync quiz state with localStorage
+  useEffect(() => {
+    localStorage.setItem(`quizState_${examFile}`, JSON.stringify(quizState));
+  }, [quizState, examFile]);
 
   // LOADING STATE
   if (loading) {
@@ -152,7 +221,7 @@ function Quiz({ examFile, onQuit }) {
             variant="contained"
             size="large"
             startIcon={<RefreshIcon />}
-            onClick={() => window.location.reload()} // Business logic intact: do not change
+            onClick={() => window.location.reload()}
             sx={{
               px: 4,
               py: 1.5,
@@ -214,23 +283,23 @@ function Quiz({ examFile, onQuit }) {
     );
   }
 
-  const question = examData[current]; // Business logic intact: do not change
+  const question = examData[current];
 
-  // Business logic intact: do not change - handleSubmit function
   const handleSubmit = () => {
     const updatedStatus = [...questionStatus];
     updatedStatus[current] = {
       answered: selected !== "",
       marked: markQuestion,
     };
-    setQuestionStatus(updatedStatus);
-
-    if (selected === question.answer) setScore(score + 1);
-
-    if (current + 1 < examData.length) {
-      setCurrent(current + 1);
-      setSelected("");
-    } else {
+    setQuizState((prev) => ({
+      ...prev,
+      questionStatus: updatedStatus,
+      current:
+        prev.current + 1 < examData.length ? prev.current + 1 : prev.current,
+      selected: "",
+      score: prev.selected === question.answer ? prev.score + 1 : prev.score,
+    }));
+    if (current + 1 >= examData.length) {
       setShowResult(true);
       setShowReview(true);
     }
@@ -354,11 +423,11 @@ function Quiz({ examFile, onQuit }) {
         }}
       >
         {examData.map((_, index) => {
-          const status = questionStatus[index];
+          const status = quizState.questionStatus[index];
           let chipColor = "default";
           let chipBgColor = "grey.300";
 
-          if (index === current) {
+          if (index === quizState.current) {
             chipColor = "primary";
             chipBgColor = "primary.main";
           } else if (status?.marked) {
@@ -373,9 +442,7 @@ function Quiz({ examFile, onQuit }) {
             <IconButton
               key={index}
               onClick={() => {
-                // Business logic intact: do not change
-                setCurrent(index);
-                setSelected("");
+                goToQuestion(index);
                 if (inDrawer) setSidebarOpen(false);
               }}
               sx={{
@@ -383,14 +450,17 @@ function Quiz({ examFile, onQuit }) {
                 height: 48,
                 bgcolor: chipBgColor,
                 color:
-                  index === current || status?.answered || status?.marked
+                  index === quizState.current ||
+                  status?.answered ||
+                  status?.marked
                     ? "white"
                     : "text.primary",
                 borderRadius: 2,
                 fontWeight: 600,
                 fontSize: "0.875rem",
-                border: index === current ? 3 : 0,
-                borderColor: index === current ? "primary.dark" : "transparent",
+                border: index === quizState.current ? 3 : 0,
+                borderColor:
+                  index === quizState.current ? "primary.dark" : "transparent",
                 transition: theme.transitions.create(
                   ["background-color", "transform", "box-shadow"],
                   {
@@ -399,7 +469,9 @@ function Quiz({ examFile, onQuit }) {
                 ),
                 "&:hover": {
                   backgroundColor:
-                    index === current || status?.answered || status?.marked
+                    index === quizState.current ||
+                    status?.answered ||
+                    status?.marked
                       ? chipBgColor
                       : theme.palette.grey[400],
                   opacity: 0.9,
@@ -427,6 +499,12 @@ function Quiz({ examFile, onQuit }) {
   if (showResult) {
     const percentage = Math.round((score / examData.length) * 100);
     const passed = percentage >= 70;
+
+    useEffect(() => {
+      if (showResult) {
+        localStorage.removeItem(`quizState_${examFile}`);
+      }
+    }, [showResult]);
 
     return (
       <Container maxWidth="md" sx={{ py: 8 }}>
@@ -536,10 +614,9 @@ function Quiz({ examFile, onQuit }) {
     );
   }
 
-  // REVIEW SCREEN
   if (showReviewScreen) {
-    const answered = questionStatus.filter((q) => q.answered).length;
-    const marked = questionStatus.filter((q) => q.marked).length;
+    const answered = quizState.questionStatus.filter((q) => q.answered).length;
+    const marked = quizState.questionStatus.filter((q) => q.marked).length;
     const total = examData.length;
     const unanswered = total - answered;
 
@@ -563,8 +640,12 @@ function Quiz({ examFile, onQuit }) {
             Review Your Exam
           </Typography>
 
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={4}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={3}
+            sx={{ mb: 4 }}
+          >
+            <Box sx={{ flex: "1 1 100%", maxWidth: { sm: "33.33%" } }}>
               <Paper
                 elevation={0}
                 sx={{
@@ -574,12 +655,7 @@ function Quiz({ examFile, onQuit }) {
                   borderRadius: 2,
                   border: 1,
                   borderColor: "success.200",
-                  transition: theme.transitions.create(["box-shadow"], {
-                    duration: theme.transitions.duration.short,
-                  }),
-                  "&:hover": {
-                    boxShadow: theme.shadows[2],
-                  },
+                  "&:hover": { boxShadow: theme.shadows[2] },
                 }}
               >
                 <CheckCircleIcon
@@ -595,9 +671,8 @@ function Quiz({ examFile, onQuit }) {
                   Answered
                 </Typography>
               </Paper>
-            </Grid>
-
-            <Grid item xs={12} sm={4}>
+            </Box>
+            <Box sx={{ flex: "1 1 100%", maxWidth: { sm: "33.33%" } }}>
               <Paper
                 elevation={0}
                 sx={{
@@ -607,12 +682,7 @@ function Quiz({ examFile, onQuit }) {
                   borderRadius: 2,
                   border: 1,
                   borderColor: "grey.200",
-                  transition: theme.transitions.create(["box-shadow"], {
-                    duration: theme.transitions.duration.short,
-                  }),
-                  "&:hover": {
-                    boxShadow: theme.shadows[2],
-                  },
+                  "&:hover": { boxShadow: theme.shadows[2] },
                 }}
               >
                 <RadioButtonUncheckedIcon
@@ -628,9 +698,8 @@ function Quiz({ examFile, onQuit }) {
                   Unanswered
                 </Typography>
               </Paper>
-            </Grid>
-
-            <Grid item xs={12} sm={4}>
+            </Box>
+            <Box sx={{ flex: "1 1 100%", maxWidth: { sm: "33.33%" } }}>
               <Paper
                 elevation={0}
                 sx={{
@@ -640,12 +709,7 @@ function Quiz({ examFile, onQuit }) {
                   borderRadius: 2,
                   border: 1,
                   borderColor: "warning.200",
-                  transition: theme.transitions.create(["box-shadow"], {
-                    duration: theme.transitions.duration.short,
-                  }),
-                  "&:hover": {
-                    boxShadow: theme.shadows[2],
-                  },
+                  "&:hover": { boxShadow: theme.shadows[2] },
                 }}
               >
                 <FlagIcon sx={{ fontSize: 32, color: "warning.main", mb: 1 }} />
@@ -659,8 +723,8 @@ function Quiz({ examFile, onQuit }) {
                   Marked for Review
                 </Typography>
               </Paper>
-            </Grid>
-          </Grid>
+            </Box>
+          </Stack>
 
           <Alert severity="info" sx={{ mb: 4 }}>
             <Typography variant="body2">
@@ -675,7 +739,7 @@ function Quiz({ examFile, onQuit }) {
               variant="outlined"
               size="large"
               startIcon={<NavigateBeforeIcon />}
-              onClick={() => setShowReviewScreen(false)} // Business logic intact: do not change
+              onClick={() => setShowReviewScreen(false)}
               sx={{
                 px: 4,
                 py: 1.5,
@@ -705,7 +769,6 @@ function Quiz({ examFile, onQuit }) {
               size="large"
               color="success"
               onClick={() => {
-                // Business logic intact: do not change
                 setShowReviewScreen(false);
                 setShowResult(true);
                 setShowReview(true);
@@ -741,6 +804,24 @@ function Quiz({ examFile, onQuit }) {
 
   // MAIN QUIZ INTERFACE
   const progress = ((current + 1) / examData.length) * 100;
+
+  // Navigation functions
+  const goToQuestion = (index) => {
+    setQuizState((prev) => ({ ...prev, current: index, selected: "" }));
+  };
+
+  const handleQuit = () => {
+    localStorage.removeItem(`quizState_${examFile}`);
+    setQuizState({
+      current: 0,
+      selected: "",
+      markQuestion: false,
+      questionStatus: [],
+      score: 0,
+      time: "90:00",
+    }); // Reset quiz state
+    onQuit(); // Navigate to homepage
+  };
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "grey.50" }}>
@@ -790,11 +871,10 @@ function Quiz({ examFile, onQuit }) {
             {/* HEADER - PROGRESS & TIMER */}
             <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider" }}>
               {/* 1. Quit Button */}
-
               <Button
                 startIcon={<ArrowBackIcon />}
                 variant="outlined"
-                onClick={onQuit}
+                onClick={handleQuit}
                 sx={{ textTransform: "none", borderRadius: 2 }}
               >
                 Quit
@@ -823,11 +903,11 @@ function Quiz({ examFile, onQuit }) {
 
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
-                      Question {current + 1} of {examData.length}
+                      Question {quizState.current + 1} of {examData.length}
                     </Typography>
                     <LinearProgress
                       variant="determinate"
-                      value={progress}
+                      value={((quizState.current + 1) / examData.length) * 100}
                       sx={{
                         height: 8,
                         borderRadius: 1,
@@ -840,7 +920,7 @@ function Quiz({ examFile, onQuit }) {
                           }),
                         },
                       }}
-                      aria-label={`Question ${current + 1} of ${
+                      aria-label={`Question ${quizState.current + 1} of ${
                         examData.length
                       }`}
                     />
@@ -888,11 +968,13 @@ function Quiz({ examFile, onQuit }) {
                     <Checkbox
                       checked={markQuestion}
                       onChange={() => {
-                        // Business logic intact: do not change
                         const updatedStatus = [...questionStatus];
                         updatedStatus[current].marked = !markQuestion;
-                        setQuestionStatus(updatedStatus);
-                        setMarkQuestion(!markQuestion);
+                        setQuizState((prev) => ({
+                          ...prev,
+                          questionStatus: updatedStatus,
+                          markQuestion: !prev.markQuestion,
+                        }));
                       }}
                       sx={{
                         color: "warning.main",
@@ -931,7 +1013,12 @@ function Quiz({ examFile, onQuit }) {
                 <FormControl component="fieldset" fullWidth>
                   <RadioGroup
                     value={selected}
-                    onChange={(e) => setSelected(e.target.value)} // Business logic intact: do not change
+                    onChange={(e) =>
+                      setQuizState((prev) => ({
+                        ...prev,
+                        selected: e.target.value,
+                      }))
+                    }
                   >
                     <Box sx={{ display: "grid", gap: 1.5 }}>
                       {question.options.map((option, index) => {
@@ -962,7 +1049,12 @@ function Quiz({ examFile, onQuit }) {
                                 transform: "translateY(-2px)",
                               },
                             }}
-                            onClick={() => setSelected(letter)}
+                            onClick={() =>
+                              setQuizState((prev) => ({
+                                ...prev,
+                                selected: letter,
+                              }))
+                            }
                           >
                             <FormControlLabel
                               value={letter}
@@ -985,7 +1077,7 @@ function Quiz({ examFile, onQuit }) {
                               }
                               sx={{
                                 margin: 0,
-                                width: "100%",
+                                width: "100",
                                 "& .MuiFormControlLabel-label": {
                                   flex: 1,
                                 },
@@ -1042,9 +1134,12 @@ function Quiz({ examFile, onQuit }) {
                   variant="outlined"
                   startIcon={<NavigateBeforeIcon />}
                   onClick={() => {
-                    if (current > 0) {
-                      setCurrent(current - 1);
-                      setSelected("");
+                    if (quizState.current > 0) {
+                      setQuizState((prev) => ({
+                        ...prev,
+                        current: prev.current - 1,
+                        selected: "",
+                      }));
                     }
                   }}
                   disabled={current === 0}

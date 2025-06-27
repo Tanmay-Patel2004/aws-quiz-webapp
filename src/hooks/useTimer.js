@@ -1,8 +1,7 @@
-// src/hooks/useTimer.js
 import { useEffect, useState } from "react";
 
-export function useTimer(startingMinutes = 90) {
-  const [secondsLeft, setSecondsLeft] = useState(startingMinutes * 60);
+export function useTimer(initialSeconds = 90 * 60) {
+  const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -16,7 +15,7 @@ export function useTimer(startingMinutes = 90) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, []); // Runs once on mount
 
   const minutes = Math.floor(secondsLeft / 60)
     .toString()

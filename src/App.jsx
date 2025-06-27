@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Quiz from "./components/Quiz";
 import Home from "./components/Home";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -24,7 +24,9 @@ import {
 function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [selectedExamFile, setSelectedExamFile] = useState(null);
+  const [selectedExamFile, setSelectedExamFile] = useState(() => {
+    return localStorage.getItem("selectedExamFile") || null;
+  });
 
   const lightTheme = createTheme({
     palette: { mode: "light" },
@@ -48,6 +50,15 @@ function App() {
     setSelectedExamFile(filename);
   };
 
+  // Sync back to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedExamFile) {
+      localStorage.setItem("selectedExamFile", selectedExamFile);
+    } else {
+      localStorage.removeItem("selectedExamFile");
+    }
+  }, [selectedExamFile]);
+
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline />
@@ -70,7 +81,13 @@ function App() {
           <Typography
             variant="h6"
             component="h1"
-            onClick={() => setSelectedExamFile(null)}
+            onClick={() => {
+              if (selectedExamFile) {
+                localStorage.removeItem(`quizState_${selectedExamFile}`); // Clear quiz state for the selected exam
+              }
+              setSelectedExamFile(null); // Clear selected exam to trigger Quiz reset
+              window.location.href = "/"; // Navigate to homepage
+            }}
             sx={{
               color: (theme) => theme.palette.primary.contrastText,
               fontWeight: 600,
