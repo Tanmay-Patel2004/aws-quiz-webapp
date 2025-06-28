@@ -11,11 +11,9 @@ import {
   Stack,
   Paper,
 } from "@mui/material";
-import {
-  Quiz as QuizIcon,
-  School as SchoolIcon,
-  Assessment as AssessmentIcon,
-} from "@mui/icons-material";
+import QuizIcon from "@mui/icons-material/Quiz";
+import SchoolIcon from "@mui/icons-material/School";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 
 // Business logic intact: do not change
 const exams = Array.from({ length: 23 }, (_, i) => ({

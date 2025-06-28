@@ -1,7 +1,6 @@
 import { useTimer } from "../hooks/useTimer";
 import { useState, useEffect } from "react";
 
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import {
   Box,
   Typography,
@@ -25,18 +24,17 @@ import {
   IconButton,
   Drawer,
 } from "@mui/material";
-import {
-  AccessTime as AccessTimeIcon,
-  NavigateBefore as NavigateBeforeIcon,
-  NavigateNext as NavigateNextIcon,
-  CheckCircle as CheckCircleIcon,
-  RadioButtonUnchecked as RadioButtonUncheckedIcon,
-  Flag as FlagIcon,
-  Quiz as QuizIcon,
-  Refresh as RefreshIcon,
-  Menu as MenuIcon,
-  Close as CloseIcon,
-} from "@mui/icons-material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore";
+import NavigateNextIcon from "@mui/icons-material/NavigateNext";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import FlagIcon from "@mui/icons-material/Flag";
+import QuizIcon from "@mui/icons-material/Quiz";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
 
 function Quiz({ examFile, onQuit }) {
   const [examData, setExamData] = useState(null);
