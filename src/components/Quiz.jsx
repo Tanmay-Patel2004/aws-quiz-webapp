@@ -61,12 +61,12 @@ function Quiz({ examFile, onQuit }) {
         return {
           current: parsed.current || 0,
           selected: parsed.selected || "",
-          markQuestion: parsed.markQuestion || false,
+          markQuestion: false, // No longer a global state, handled per question
           questionStatus: Array.isArray(parsed.questionStatus)
             ? parsed.questionStatus
             : [],
           score: parsed.score || 0,
-          time: parsed.time || "90:00", // Ensure time is "MM:SS" string
+          time: parsed.time || "90:00",
         };
       } catch (e) {
         localStorage.removeItem(`quizState_${examFile}`);
@@ -76,7 +76,7 @@ function Quiz({ examFile, onQuit }) {
           markQuestion: false,
           questionStatus: [],
           score: 0,
-          time: "90:00", // Default to "90:00" string
+          time: "90:00",
         };
       }
     }
@@ -86,7 +86,7 @@ function Quiz({ examFile, onQuit }) {
       markQuestion: false,
       questionStatus: [],
       score: 0,
-      time: "90:00", // Default to "90:00" string
+      time: "90:00",
     };
   });
 
@@ -153,13 +153,13 @@ function Quiz({ examFile, onQuit }) {
             return {
               answered: existingStatus.answered || false,
               marked: existingStatus.marked || false,
-              selected: existingStatus.selected || "", // Store selected answer
+              selected: existingStatus.selected || "",
             };
           });
         return {
           ...prev,
           questionStatus: newQuestionStatus,
-          selected: currentStatus[prev.current]?.selected || "", // Restore selected for current question
+          selected: currentStatus[prev.current]?.selected || "",
         };
       });
     }
@@ -170,6 +170,7 @@ function Quiz({ examFile, onQuit }) {
       setQuizState((prev) => ({
         ...prev,
         selected: prev.questionStatus[prev.current].selected || "",
+        // No need for markQuestion as a global state
       }));
     }
   }, [quizState.current, examData, quizState.questionStatus]);
@@ -307,21 +308,21 @@ function Quiz({ examFile, onQuit }) {
   const question = examData[current];
 
   const handleSubmit = () => {
-    const updatedStatus = [...questionStatus];
-    updatedStatus[current] = {
-      answered: selected !== "",
-      marked: markQuestion,
-      selected: selected, // Save the selected answer
+    const updatedStatus = [...quizState.questionStatus];
+    updatedStatus[quizState.current] = {
+      answered: quizState.selected !== "",
+      marked: quizState.questionStatus[quizState.current]?.marked || false,
+      selected: quizState.selected,
     };
     setQuizState((prev) => ({
       ...prev,
       questionStatus: updatedStatus,
       current:
         prev.current + 1 < examData.length ? prev.current + 1 : prev.current,
-      selected: "", // Reset for next question, but restored by useEffect
+      selected: "", // Reset for next question, restored by useEffect
       score: prev.selected === question.answer ? prev.score + 1 : prev.score,
     }));
-    if (current + 1 >= examData.length) {
+    if (quizState.current + 1 >= examData.length) {
       setShowResult(true);
       setShowReview(true);
     }
@@ -790,7 +791,6 @@ function Quiz({ examFile, onQuit }) {
       selected: prev.questionStatus[index]?.selected || "", // Restore previous selection
     }));
   };
-
   const handleQuit = () => {
     localStorage.removeItem(`quizState_${examFile}`);
     setQuizState({
@@ -986,28 +986,56 @@ function Quiz({ examFile, onQuit }) {
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={markQuestion}
-                      onChange={() => {
-                        const updatedStatus = [...questionStatus];
-                        updatedStatus[current].marked = !markQuestion;
+                      checked={
+                        quizState.questionStatus[quizState.current]?.marked ||
+                        false
+                      }
+                      onChange={(e) => {
+                        const updatedStatus = [...quizState.questionStatus];
+                        updatedStatus[quizState.current] = {
+                          ...updatedStatus[quizState.current],
+                          marked: e.target.checked,
+                        };
                         setQuizState((prev) => ({
                           ...prev,
                           questionStatus: updatedStatus,
-                          markQuestion: !prev.markQuestion,
                         }));
                       }}
                       sx={{
-                        color: "warning.main",
+                        color:
+                          theme.palette.mode === "dark"
+                            ? "#ed6c02"
+                            : "warning.main",
                         "&.Mui-checked": {
-                          color: "warning.main",
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#ed6c02"
+                              : "warning.main",
                         },
                       }}
                     />
                   }
                   label={
                     <Stack direction="row" alignItems="center" spacing={1}>
-                      <FlagIcon sx={{ fontSize: 16, color: "warning.main" }} />
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      <FlagIcon
+                        sx={{
+                          fontSize: 16,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#ed6c02"
+                              : "warning.main",
+                        }}
+                      />
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 500,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#ffffff"
+                              : "text.primary",
+                        }}
+                      >
                         Mark for Review
                       </Typography>
                     </Stack>
@@ -1183,7 +1211,8 @@ function Quiz({ examFile, onQuit }) {
                       setQuizState((prev) => ({
                         ...prev,
                         current: prev.current - 1,
-                        selected: "",
+                        selected:
+                          prev.questionStatus[prev.current - 1]?.selected || "",
                       }));
                     }
                   }}
@@ -1219,6 +1248,7 @@ function Quiz({ examFile, onQuit }) {
                 >
                   Previous
                 </Button>
+
                 <Stack direction="row" spacing={2}>
                   <Button
                     variant="outlined"
@@ -1289,11 +1319,11 @@ function Quiz({ examFile, onQuit }) {
                     Review
                   </Button>
                 </Stack>
+
                 <Button
                   variant="contained"
                   endIcon={<NavigateNextIcon />}
                   onClick={handleSubmit}
-                  disabled={!selected}
                   sx={{
                     px: 3,
                     py: 1.5,
@@ -1316,12 +1346,14 @@ function Quiz({ examFile, onQuit }) {
                     },
                   }}
                   aria-label={
-                    current + 1 === examData.length
+                    quizState.current + 1 === examData.length
                       ? "Submit final answer"
                       : "Submit answer and go to next question"
                   }
                 >
-                  {current + 1 === examData.length ? "Submit" : "Next"}
+                  {quizState.current + 1 === examData.length
+                    ? "Submit"
+                    : "Next"}
                 </Button>
               </Stack>
             </Box>
