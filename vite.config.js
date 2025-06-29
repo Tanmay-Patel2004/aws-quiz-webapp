@@ -5,10 +5,10 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
-      external: ["react-is", "prop-types"], // Add prop-types to external dependencies
+      external: ["prop-types"],
     },
     optimizeDeps: {
-      include: ["@mui/icons-material"], // Keep for MUI icons optimization
+      include: ["@mui/icons-material"],
     },
   },
 });
